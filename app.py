@@ -150,7 +150,8 @@ def get_qa_chain(vector_store):
     """
     # Initialize the language model using local HuggingFace pipeline (NO API KEY NEEDED!)
     # Using Google's FLAN-T5 model (free, runs locally)
-    model_name = "google/flan-t5-base"  # Smaller model for faster local inference
+    # Options: "google/flan-t5-base" (faster), "google/flan-t5-large" (more detailed but slower)
+    model_name = "google/flan-t5-large"  # Larger model for more detailed responses
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
     
@@ -159,9 +160,12 @@ def get_qa_chain(vector_store):
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        max_length=512,
-        temperature=0.1,
-        do_sample=False
+        max_length=1024,  # Increased from 512 to 1024 for longer answers
+        min_length=100,   # Minimum length to ensure detailed responses
+        temperature=0.3,  # Slightly higher for more varied responses
+        do_sample=True,   # Enable sampling for more natural text
+        top_p=0.95,       # Nucleus sampling for better quality
+        repetition_penalty=1.2  # Reduce repetition in longer text
     )
     
     llm = HuggingFacePipeline(pipeline=pipe)
@@ -170,7 +174,7 @@ def get_qa_chain(vector_store):
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=vector_store.as_retriever(search_kwargs={"k": 3}),
+        retriever=vector_store.as_retriever(search_kwargs={"k": 5}),  # Increased from 3 to 5 for more context
         return_source_documents=False,
         verbose=False,
     )
@@ -190,11 +194,21 @@ def answer_question(question: str, qa_chain) -> str:
         Answer string
     """
     try:
-        # Add instruction to answer only from the document
-        enhanced_question = f"""Based ONLY on the provided document content, answer the following question. 
+        # Add instruction to answer only from the document with detailed explanation
+        enhanced_question = f"""Based on the provided document content, provide a comprehensive and detailed answer to the following question. 
+
+Instructions:
+- Give a thorough explanation with multiple paragraphs if needed
+- Include relevant examples, definitions, and context from the document
+- Explain concepts clearly and in detail
+- If applicable, break down the answer into key points
+- Use complete sentences and proper formatting
+
 If the information is not in the document, respond with: "No relevant answer found in the document."
 
-Question: {question}"""
+Question: {question}
+
+Detailed Answer:"""
         
         # Get the answer
         result = qa_chain.invoke({"query": enhanced_question})
