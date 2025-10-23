@@ -45,16 +45,28 @@ const App: React.FC = () => {
     setConversations(updatedConversations);
     setIsLoading(true);
 
-    // Simulate a bot response
-    timeoutRef.current = window.setTimeout(() => {
+    try {
+        // Call the actual backend API
+        const response = await fetch('http://localhost:8000/ask', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ question: text }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
         const botMessage: Message = {
             role: Role.MODEL,
-            text: `This is a simulated response to: "${text}". The backend service is not connected.`,
-            sources: [
-                { title: 'Simulated Location 1', uri: '#' },
-                { title: 'Simulated Location 2', uri: '#' }
-            ]
+            text: data.answer,
+            sources: []
         };
+        
         const finalConversations = conversations.map(convo => {
             if (convo.id === activeConversationId) {
                 return { ...convo, messages: [...convo.messages, newMessage, botMessage] };
@@ -62,8 +74,23 @@ const App: React.FC = () => {
             return convo;
         });
         setConversations(finalConversations);
+    } catch (error) {
+        console.error('Error calling backend:', error);
+        const errorMessage: Message = {
+            role: Role.MODEL,
+            text: `Error: Unable to connect to the backend. Please make sure the server is running.`,
+            sources: []
+        };
+        const finalConversations = conversations.map(convo => {
+            if (convo.id === activeConversationId) {
+                return { ...convo, messages: [...convo.messages, newMessage, errorMessage] };
+            }
+            return convo;
+        });
+        setConversations(finalConversations);
+    } finally {
         setIsLoading(false);
-    }, 1500);
+    }
   };
 
   const handleNewConversation = () => {
