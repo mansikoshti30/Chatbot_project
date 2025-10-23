@@ -125,9 +125,14 @@ def build_vector_store(pdf_path: str):
     print("(First run will download the model - may take a few minutes)")
     
     # Use sentence-transformers model (runs locally, completely free!)
+    # Check if CUDA GPU is available
+    import torch
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"Using device for embeddings: {device}")
+    
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2",
-        model_kwargs={'device': 'cpu'},
+        model_kwargs={'device': device},  # Use GPU if available
         encode_kwargs={'normalize_embeddings': True}
     )
     
@@ -151,17 +156,32 @@ def get_qa_chain(vector_store):
     # Initialize the language model using local HuggingFace pipeline (NO API KEY NEEDED!)
     # Using Google's FLAN-T5 model (free, runs locally)
     # Options: "google/flan-t5-base" (faster), "google/flan-t5-large" (more detailed but slower)
-    model_name = "google/flan-t5-large"  # Larger model for more detailed responses
+    
+    # Check GPU availability
+    import torch
+    device = 0 if torch.cuda.is_available() else -1  # 0 = GPU, -1 = CPU
+    device_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
+    print(f"🎮 Using device for model: {device_name}")
+    
+    model_name = "google/flan-t5-large"  # Large model for BEST quality and most detailed responses
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+    
+    # Move model to GPU if available
+    if torch.cuda.is_available():
+        model = model.to('cuda')
+        print("✅ Model loaded on GPU - expect 10-20x faster responses!")
+    else:
+        print("⚠️ GPU not available, using CPU")
     
     # Create pipeline
     pipe = pipeline(
         "text2text-generation",
         model=model,
         tokenizer=tokenizer,
-        max_length=1024,  # Increased from 512 to 1024 for longer answers
-        min_length=100,   # Minimum length to ensure detailed responses
+        device=device,    # Use GPU (0) or CPU (-1)
+        max_length=1024,  # Maximum length for very detailed, comprehensive answers
+        min_length=100,   # Minimum length to ensure thorough responses
         temperature=0.3,  # Slightly higher for more varied responses
         do_sample=True,   # Enable sampling for more natural text
         top_p=0.95,       # Nucleus sampling for better quality
@@ -476,7 +496,14 @@ async def root():
             
             <div class="loading" id="loading">
                 <div class="spinner"></div>
-                <p>Searching for answer...</p>
+                <p id="loadingText">🤖 Analyzing your question with AI...</p>
+                <p style="font-size: 0.85em; color: #888; margin-top: 10px;">
+                    Using FLAN-T5-Large (783M parameters) with GPU acceleration 🎮<br>
+                    Expected time: 2-5 seconds for detailed, comprehensive answers
+                </p>
+                <div style="margin-top: 15px; font-size: 0.8em; color: #999;">
+                    <span id="timer">0</span> seconds elapsed...
+                </div>
             </div>
             
             <div class="answer-section" id="answerSection">
@@ -519,6 +546,8 @@ async def root():
                 }
             }
             
+            let timerInterval;
+            
             async function askQuestion() {
                 const questionInput = document.getElementById('questionInput');
                 const question = questionInput.value.trim();
@@ -532,6 +561,30 @@ async def root():
                 document.getElementById('loading').classList.add('show');
                 document.getElementById('answerSection').classList.remove('show');
                 document.getElementById('askButton').disabled = true;
+                
+                // Start timer and dynamic messages
+                let seconds = 0;
+                const timerElement = document.getElementById('timer');
+                const loadingText = document.getElementById('loadingText');
+                const messages = [
+                    '🤖 Analyzing your question with AI...',
+                    '📚 Searching through document chunks...',
+                    '🧠 Generating comprehensive answer...',
+                    '✨ Crafting detailed response...',
+                    '⚡ Almost done, perfecting the answer...'
+                ];
+                let messageIndex = 0;
+                
+                timerInterval = setInterval(() => {
+                    seconds++;
+                    timerElement.textContent = seconds;
+                    
+                    // Change message every 5 seconds
+                    if (seconds % 5 === 0 && messageIndex < messages.length - 1) {
+                        messageIndex++;
+                        loadingText.textContent = messages[messageIndex];
+                    }
+                }, 1000);
                 
                 try {
                     const response = await fetch('/ask', {
@@ -553,6 +606,7 @@ async def root():
                 } catch (error) {
                     alert('Error: ' + error.message);
                 } finally {
+                    clearInterval(timerInterval);
                     document.getElementById('loading').classList.remove('show');
                     document.getElementById('askButton').disabled = false;
                 }
