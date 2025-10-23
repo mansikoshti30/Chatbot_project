@@ -1,173 +1,157 @@
 # Geospatial Information Chatbot 🌍
 
-> **New here? Start with [START_HERE.md](START_HERE.md) or [QUICKSTART.md](QUICKSTART.md)** ⚡
-
-A FastAPI-based chatbot application that answers questions **ONLY** from a fixed geospatial PDF stored locally. The app uses LangChain, OpenAI embeddings, and FAISS vector database for intelligent question answering.
+A FastAPI-based chatbot that answers questions from a PDF document using LangChain, HuggingFace models, and FAISS vector database.
 
 ## Features
 
-- 📄 Loads and processes a local geospatial PDF
-- 🔍 Extracts text using PyMuPDF
-- 📊 Creates embeddings using OpenAI
-- 🗄️ Stores embeddings in FAISS vector database
-- 🤖 Answers questions using GPT-3.5-turbo/GPT-4
-- ⚡ Caching to avoid reprocessing
-- 🎨 Clean, modern web interface
-- 🚀 Fast REST API with FastAPI
+- 📄 Loads and processes PDF documents locally
+- 🔍 Uses HuggingFace models (FREE - no API keys required)
+- 🗄️ FAISS vector database for fast retrieval
+- 🤖 FLAN-T5 model for question answering
+- 💻 Works offline after initial model download
+- ⚡ GPU acceleration support (optional)
+- 🎨 Clean web interface
 
-## Prerequisites
+## Quick Start
 
-- Python 3.8 or higher
-- OpenAI API key
+### Option 1: Automated Setup (Recommended)
 
-## Installation
-
-1. Clone this repository:
-```bash
-git clone <repository-url>
-cd Chatbot_project
+**For CPU:**
+```powershell
+.\setup.ps1
+.\start_chatbot.bat
 ```
 
-2. Install required packages:
-```bash
+**For GPU (NVIDIA only):**
+```powershell
+.\setup.ps1 -GPU
+.\start_chatbot.bat
+```
+
+### Option 2: Manual Setup
+
+1. **Install Python 3.11** (recommended)
+
+2. **Create virtual environment:**
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+3. **Install dependencies:**
+```powershell
 pip install -r requirements.txt
 ```
 
-3. Set your OpenAI API key as an environment variable:
-
-**Windows (PowerShell):**
+4. **For GPU support (optional):**
 ```powershell
-$env:OPENAI_API_KEY="your-api-key-here"
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 ```
 
-**Windows (Command Prompt):**
-```cmd
-set OPENAI_API_KEY=your-api-key-here
-```
+7. **Open your browser:** http://localhost:8000
 
-**Linux/Mac:**
-```bash
-export OPENAI_API_KEY="your-api-key-here"
-```
+---
 
-4. Create a `data` directory and place your PDF file:
-```bash
-mkdir data
-# Copy your geospatial_book.pdf to the data directory
-```
-
-## Usage
-
-Run the FastAPI server:
-```bash
-python app.py
-```
-
-Or using uvicorn directly:
-```bash
-uvicorn app:app --reload
-```
-
-The app will:
-1. Start the server on http://localhost:8000
-2. Load and process the PDF at startup (cached for performance)
-3. Create embeddings and build the FAISS vector store
-4. Serve a web interface to ask questions
-5. Answer questions based **ONLY** on the PDF content
-
-Open your browser and navigate to:
-- **Web Interface**: http://localhost:8000
-- **API Documentation**: http://localhost:8000/docs
-- **Health Check**: http://localhost:8000/health
-
-## Project Structure
+## 📁 Project Structure
 
 ```
 Chatbot_project/
-├── app.py              # Main FastAPI application
-├── requirements.txt    # Python dependencies
-├── README.md          # This file
-├── QUICKSTART.md      # Quick start guide
-├── test_api.py        # API testing script
-├── .gitignore         # Git ignore rules
+├── app.py                 # Main application
+├── requirements.txt       # Dependencies (CPU)
+├── requirements-gpu.txt   # GPU-specific packages
+├── setup.ps1             # Automated setup script
+├── start_chatbot.bat     # Start script
+├── README.md             # This file
 └── data/
-    └── geospatial_book.pdf  # Your PDF file (not included)
+    └── geospatial_book.pdf  # Your PDF file
 ```
 
-## API Endpoints
+---
 
-### GET `/`
-Serves the web interface
+## 🔧 System Requirements
 
-### GET `/health`
-Check system status
-- Returns `{"status": "ready"}` when system is initialized
-- Returns `{"status": "not_ready"}` if still loading
+**Minimum (CPU Mode):**
+- Python 3.11 or 3.12
+- 8GB RAM (16GB recommended)
+- 5GB free disk space
+- Internet (first-time model download only)
 
-### POST `/ask`
-Answer a question
-- **Request Body**: `{"question": "your question here"}`
-- **Response**: `{"answer": "the answer", "status": "success"}`
+**Recommended (GPU Mode):**
+- NVIDIA GPU with 6GB+ VRAM
+- CUDA 12.1 or higher
+- 16GB RAM
 
-## How It Works
+---
 
-1. **PDF Loading**: Uses PyMuPDF to extract all text from the PDF at startup
-2. **Text Chunking**: Splits text into 1000-character chunks with 200-character overlap
-3. **Embeddings**: Creates embeddings using OpenAI's embedding model
-4. **Vector Store**: Stores embeddings in FAISS for fast similarity search
-5. **Question Answering**: Uses RetrievalQA chain to answer questions based on retrieved context
-6. **Response Filtering**: Ensures answers come only from the PDF content
-7. **REST API**: FastAPI serves both the web interface and API endpoints
+## 🌐 Usage
 
-## Configuration
+After starting the chatbot:
+- **Web Interface:** http://localhost:8000
+- **API Docs:** http://localhost:8000/docs
+- **Health Check:** http://localhost:8000/health
 
-You can modify the following parameters in `app.py`:
+### API Endpoints
 
-- **PDF Path**: Change `PDF_PATH` to point to your PDF file
-- **Chunk Size**: Modify `chunk_size` in `create_text_chunks()` (default: 1000)
-- **Chunk Overlap**: Modify `chunk_overlap` in `create_text_chunks()` (default: 200)
-- **Model**: Change `model_name` in `get_qa_chain()` (default: "gpt-3.5-turbo")
-- **Retrieval Count**: Modify `k` in `as_retriever()` (default: 3 chunks)
+**POST /ask** - Ask a question
+```json
+{
+  "question": "What is geospatial data?"
+}
+```
 
-## Notes
+**GET /health** - Check server status
 
-- The app caches the vector store to avoid reprocessing the PDF on every run
-- If the PDF doesn't contain relevant information, the bot responds with: "No relevant answer found in the document."
-- The app uses `gpt-3.5-turbo` by default. You can switch to `gpt-4` for better answers (higher cost)
+---
 
-## Troubleshooting
+## ⚙️ Configuration
 
-**Error: "OPENAI_API_KEY environment variable is not set"**
-- Make sure you've set the environment variable before running the app
-- The server will start but won't be able to answer questions
+Edit `app.py` to customize:
+- **PDF Path:** Change `PDF_PATH` variable
+- **Model:** Switch between `flan-t5-base` and `flan-t5-large`
+- **Chunk Size:** Modify in `create_text_chunks()`
+- **GPU Usage:** Automatically detected
 
-**Error: "PDF file not found"**
-- Ensure your PDF file is in the `data/` directory
-- Check that the filename matches `PDF_PATH` in `app.py`
-- The server will start but system status will be "not_ready"
+---
 
-**Poor answer quality**
-- Try increasing the number of retrieved chunks (modify `k` parameter in `get_qa_chain()`)
-- Consider using GPT-4 instead of GPT-3.5-turbo
-- Adjust chunk size and overlap for better context
+## 🐛 Troubleshooting
 
-**Server won't start**
-- Check if port 8000 is already in use
-- Try a different port: `uvicorn app:app --port 8080`
+**"Python not found"**
+- Install Python 3.11 from python.org
+- Make sure "Add to PATH" is checked
 
-## 📚 Additional Documentation
+**"PDF file not found"**
+- Place your PDF in `data/geospatial_book.pdf`
+- Create the `data` folder if it doesn't exist
 
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick setup guide with examples
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Detailed system architecture and data flow
-- **[SUMMARY.md](SUMMARY.md)** - Complete project summary and features
-- **[test_api.py](test_api.py)** - API testing examples
-- **[run.ps1](run.ps1)** - PowerShell script to run the app
+**"Port 8000 already in use"**
+- Close other applications using port 8000
+- Or change port in app.py: `uvicorn.run(app, port=8080)`
 
-## 🤝 Contributing
+**Slow responses (CPU mode)**
+- Use GPU mode for 5-10x faster: `.\setup.ps1 -GPU`
+- Or switch to smaller model: `flan-t5-base`
 
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest features
+---
+
+## 📝 Notes
+
+- First run downloads models (~3GB for flan-t5-large)
+- Models are cached locally for offline use
+- GPU acceleration is automatic if NVIDIA GPU detected
+- Answers are generated only from your PDF content
+- No API keys or external services required
+
+---
+
+## 🚀 Performance
+
+**CPU Mode:**
+- Startup: 10-30 seconds
+- Per answer: 5-15 seconds
+
+**GPU Mode (RTX 3060+):**
+- Startup: 10-30 seconds
+- Per answer: 1-3 seconds
 - Submit pull requests
 
 ## License
