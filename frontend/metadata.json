@@ -1,0 +1,5 @@
+{
+  "name": "Geospatial World (Frontend Only)",
+  "description": "A UI for a chatbot to explore the world with geospatial queries. The backend service has been removed.",
+  "requestFramePermissions": []
+}

@@ -170,9 +170,9 @@ def get_qa_chain(vector_store):
     # Move model to GPU if available
     if torch.cuda.is_available():
         model = model.to('cuda')
-        print("✅ Model loaded on GPU - expect 10-20x faster responses!")
+        print(" Model loaded on GPU - expect 10-20x faster responses!")
     else:
-        print("⚠️ GPU not available, using CPU")
+        print(" GPU not available, using CPU")
     
     # Create pipeline
     pipe = pipeline(
@@ -181,7 +181,7 @@ def get_qa_chain(vector_store):
         tokenizer=tokenizer,
         device=device,    # Use GPU (0) or CPU (-1)
         max_length=1024,  # Maximum length for very detailed, comprehensive answers
-        min_length=100,   # Minimum length to ensure thorough responses
+        min_length=10,   # Minimum length to ensure thorough responses
         temperature=0.3,  # Slightly higher for more varied responses
         do_sample=True,   # Enable sampling for more natural text
         top_p=0.95,       # Nucleus sampling for better quality
@@ -217,14 +217,14 @@ def answer_question(question: str, qa_chain) -> str:
         # Add instruction to answer only from the document with detailed explanation
         enhanced_question = f"""Based on the provided document content, provide a comprehensive and detailed answer to the following question. 
 
-Instructions:
-- Give a thorough explanation with multiple paragraphs if needed
-- Include relevant examples, definitions, and context from the document
-- Explain concepts clearly and in detail
-- If applicable, break down the answer into key points
-- Use complete sentences and proper formatting
+    Instructions:
+    - Give a thorough explanation with multiple paragraphs if needed
+    - Include relevant examples, definitions, and context from the document
+    - Explain concepts clearly and in detail
+    - If applicable, break down the answer into key points
+    - Use complete sentences and proper formatting
 
-If the information is not in the document, respond with: "No relevant answer found in the document."
+    If the information is not in the document, respond with: "No relevant answer found in the document."
 
 Question: {question}
 
